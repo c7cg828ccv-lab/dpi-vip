@@ -617,8 +617,92 @@
         // HÀM KIỂM TRA KEY - KÍCH HOẠT LẦN ĐẦU
         // ============================================================
         function checkKey() {
-            const key = document.getElementById("keyInput").value.trim().toUpperCase();
-            const infoEl = document.getElementById("keyInfo");
+            function checkKey() {
+    const key = document.getElementById("keyInput").value.trim().toUpperCase();
+    const infoEl = document.getElementById("keyInfo");
+
+    // Admin key
+    if (key === ADMIN_KEY) {
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("deviceBox").style.display = "block";
+        infoEl.innerHTML = '👑 Admin Key hợp lệ!';
+        return;
+    }
+
+    if (!keyDB[key]) {
+        infoEl.innerHTML = '❌ Key không hợp lệ! Vui lòng thử lại.';
+        return;
+    }
+
+    const data = keyDB[key];
+    const now = new Date();
+
+    // ==========================================================
+    // KIỂM TRA KEY ĐÃ HẾT HẠN CHƯA
+    // ==========================================================
+    if (data.type !== 'vip' && data.expires) {
+        const expireDate = new Date(data.expires);
+        if (now > expireDate) {
+            data.status = 'expired';
+            const daysOver = Math.floor((now - expireDate) / (24*60*60*1000));
+            if (daysOver >= 3) {
+                // Tự động gia hạn
+                const newActivated = now.toISOString();
+                data.activatedAt = newActivated;
+                data.expires = getExpiryDate(newActivated, data.type);
+                data.status = 'active';
+                infoEl.innerHTML = `✅ Key ${key} đã được gia hạn tự động!`;
+            } else {
+                infoEl.innerHTML = `⛔ Key đã hết hạn! Sẽ tự động gia hạn sau ${3 - daysOver} ngày.`;
+                return;
+            }
+        } else {
+            data.status = 'active';
+        }
+    }
+
+    // ==========================================================
+    // KIỂM TRA LẦN KÍCH HOẠT ĐẦU TIÊN
+    // ==========================================================
+    if (!data.activatedAt) {
+        // 🔥 LẦN ĐẦU TIÊN - GHI NHẬN THỜI GIAN
+        const activatedTime = now.toISOString();
+        data.activatedAt = activatedTime;
+        data.status = 'active';
+        if (data.type !== 'vip') {
+            data.expires = getExpiryDate(activatedTime, data.type);
+        }
+        const activated = new Date(activatedTime);
+        infoEl.innerHTML = `✅ Key ${key} đã được kích hoạt lần đầu! (${getKeyTypeLabel(data.type)}) - ${activated.toLocaleString()}`;
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("deviceBox").style.display = "block";
+        return;
+    }
+
+    // ==========================================================
+    // ĐÃ KÍCH HOẠT RỒI - HIỂN THỊ THỜI GIAN CŨ
+    // ==========================================================
+    const activated = new Date(data.activatedAt);
+    const typeLabel = getKeyTypeLabel(data.type);
+    
+    let timeMsg = `✅ Key ${key} hợp lệ! (${typeLabel})`;
+    timeMsg += `\n📅 Kích hoạt: ${activated.toLocaleString()}`;
+    
+    if (data.type !== 'vip' && data.expires) {
+        const expire = new Date(data.expires);
+        const daysLeft = Math.floor((expire - now) / (24*60*60*1000));
+        if (daysLeft > 0) {
+            timeMsg += `\n⏳ Còn ${daysLeft} ngày sử dụng`;
+            timeMsg += `\n📅 Hết hạn: ${expire.toLocaleString()}`;
+        }
+    } else {
+        timeMsg += `\n♾️ Không giới hạn thời gian`;
+    }
+    
+    infoEl.innerHTML = timeMsg.replace(/\n/g, '<br>');
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("deviceBox").style.display = "block";
+}
 
             // Admin key
             if (key === ADMIN_KEY) {
